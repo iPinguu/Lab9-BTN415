@@ -25,8 +25,7 @@ using namespace sdds;
 
 int main() {
 	
-	char username[] = {""};
-	char response[] = "";
+	std::string message;
 	
 	Client_TCP client;
 	client.create_socket();
@@ -35,15 +34,28 @@ int main() {
 	while(true) {
 		
 		std::cout << "[Client]: Enter username: ";
-		std::cin >> username;
+		std::cin >> message;	
 
-    std::cout << std::endl;
+        unsigned char checkSum = 0;
+		for(const char& chars : message) {
+			checkSum += sum_bits(static_cast<unsigned char>(chars));
+		}
 		
-		client.send_message(username);
-		client.receive_message(response);
+		message += std::to_string(static_cast<int>(checkSum));
 
-		std::cout << "[Client] Your email contents: " << response << std::endl;
+		std::cout << message << std::endl;
+		
+		client.send_message(message);
+		std::cout << "message sent\n";
+
+		std::cout << "message about to be recv\n";
+		packet recvMsg;
+		client.receive_packet(recvMsg);
+		std::cout << "message recv\n";
+
+		std::cout << "[Client] Server Response: \n" << recvMsg.letters << std::endl;
 
 	}
+
 	return 0;
 }

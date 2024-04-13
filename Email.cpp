@@ -42,20 +42,17 @@ namespace sdds
 		return Email::details.body;
 	}
 
-	char* Email::returnDetails() const {
+	std::string Email::returnDetails() const {
 		
-		// Serialize this ig, so it works? ¯\_(ツ)_/¯
+		std::string output;
 
-		char* output;
-
-		strcpy(output, details.from.c_str());
-		strcpy(output, details.to.c_str());
-		strcpy(output, details.subject.c_str());
-		strcpy(output, details. body.c_str());
-
-		std::cout << "in returnDetails() " << output;
+		output += "To: " + this->details.to + "\n" += "From: " + this->details.from + "\n" += "Subject: " + this->details.subject + "\n" += "Body: " + this->details.body + "\n";
 
 		return output;
+	}
+
+	EmailDetails Email::getDetails() const {
+		return details;
 	}
 
 	// -------------------------------------------------------------------- //
@@ -79,6 +76,17 @@ namespace sdds
 		to = src.to;
 		subject = src.subject;
 		body = src.body;
+	}
+
+	EmailDetails EmailDetails::operator=(const EmailDetails& src) {
+		if(this != &src) {
+			this->to = src.to;
+			this->from = src.from;
+			this->subject = src.subject;
+			this->body = src.body;
+		}
+
+		return *this;
 	}
 }
 

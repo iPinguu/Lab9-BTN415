@@ -36,11 +36,11 @@ namespace sdds {
 		EmailDetails();
 		EmailDetails(std::string from, std::string to, std::string subject, std::string body);
 		EmailDetails(const EmailDetails &src);
+		EmailDetails operator=(const EmailDetails& src);
 	};
 	
 	class Email
 	{
-	private:
 		std::string userName;
 		struct EmailDetails details;
 	public:
@@ -48,7 +48,9 @@ namespace sdds {
 		Email(std::string userName, EmailDetails details);
 		std::string getUserName() const;
 		std::string display() const;
-		char* returnDetails() const;
+		std::string returnDetails() const;
+
+		EmailDetails getDetails() const;
 
 	};
 }

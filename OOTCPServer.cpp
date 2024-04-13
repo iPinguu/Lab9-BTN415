@@ -41,40 +41,56 @@ int main() {
 	
 	while(true) {
 
+		bool found = false;
+		packet messagePacket;
+
 		server.listen_for_connections();
 		std::cout << "Waiting for Conenctions. " << std::endl;
 		server.accept_connection();
 		std::cout << "Connection accepted. " << std::endl;
 		
-		char* theUser;
-		std::string stringUser = {theUser};
-		server.receive_message(theUser);
+		std::string message;
+		std::string msgOnly, recvCheckSum;
+		server.receive_message(message);
 		
-		std::cout << "Before the For loop: \n";
-		
-		for(const auto& email : emails) {
-			
-			std::cout << "Inside the For loop looking for: \n" << stringUser << std::endl;
-			
-			if(email.getUserName() == stringUser) {
-				
-				std::cout << "Found match: \n";
-				char* result = email.returnDetails();
+		msgOnly = message.substr(0, message.size() - 2);
+		recvCheckSum = message.substr(message.size() - 2);
 
-				std::cout << result;
-				
-				// server.send_message(email.returnDetails());		
-				
+		std::cout << msgOnly << std::endl;
+		std::cout << recvCheckSum << std::endl;
 
-				
-				break;
-			}
+		unsigned char checkSum = 0;
+		for(const char& chars : msgOnly) {
+			checkSum += sum_bits(static_cast<int>(chars));
 		}
-		
-		// std::cout << "Message Received: " << message << std::endl;
-		// server.send_message("Got your message!");
-	}
 
+		if(recvCheckSum == std::to_string(checkSum)) {
+			
+			std::cout << "Checksum matches \n";
+			
+			for(const auto& email : emails) {
+				
+				if(email.getUserName() == msgOnly) {
+
+					messagePacket = create_packet(email);
+					server.send_packet(messagePacket);
+					found = true;
+					break;
+				}
+			}
+
+			if(!found) {
+				messagePacket = create_packet("User not found\n");
+				std::cerr << "User not found\n";
+				server.send_packet(messagePacket);
+			}
+		
+		} else {
+			std::cerr << "[SERVER] Checksum failed\n";
+			messagePacket = create_packet("Error, checksum does not match!");
+			server.send_packet(messagePacket);
+		}
+	}
 
 	return 0;
 }

@@ -22,10 +22,32 @@
 #include <string>
 #include <iostream>
 #include <winsock2.h>
+#include "Email.h"
 
-#define MAX_BUFFER_SIZE 512
+#define MAX_BUFFER_SIZE 1024
 
-namespace sdds {
+	namespace sdds {
+		
+	struct packet {
+		char name[16];
+		bool flag;
+		int size;
+		char* letters;
+	};
+
+	struct serialized_packet {
+		char* data;
+		int length;
+	};
+
+	packet create_packet(const Email& email);
+	packet create_packet(std::string msg);
+	struct serialized_packet packet_serializer(packet);
+	packet packet_deserializer(char*);
+
+	unsigned char sum_bits(unsigned char bitregister);
+    void CRC(unsigned char input, unsigned char& state);
+	
 	
 	class Node {
 	protected:
@@ -43,6 +65,7 @@ namespace sdds {
 		void start_dlls();
 		bool create_socket();
 		void display_info() const;
+
 	};
 
 	class Server_TCP : public Node {
@@ -55,8 +78,10 @@ namespace sdds {
 		bool bind_socket();
 		bool listen_for_connections();
 		bool accept_connection();
-		int send_message(char* message);
-		int receive_message(char* message);
+		int send_message(std::string message);
+		int send_packet(packet message);
+		int receive_message(std::string& message);
+		int receive_packet(packet& my_packet);
 		void close_connection();
 	};
 
@@ -64,8 +89,10 @@ namespace sdds {
 	public:
 		Client_TCP();
 		bool connect_socket(std::string ip, int port);
-		int send_message(char* message);
-		int receive_message(char* message);
+		int send_message(std::string message);
+		int send_packet(packet message);
+		int receive_message(std::string& message);
+		int receive_packet(packet& my_packet);
 	};
 }
 

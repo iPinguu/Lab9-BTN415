@@ -17,6 +17,7 @@
 
 #define _WINSOCK_DEPRECATED_NO_WARNINGS
 #include "socket.h"
+#include "Email.h"
 #include <string>
 #include <iostream>
 #include <winsock2.h>
@@ -145,15 +146,29 @@ namespace sdds
         }
     }
 
-    int Server_TCP::send_message(char* message) {
-        return send(this->client_socket, message, sizeof(message), 0);
+    int Server_TCP::send_message(std::string message) {
+        return send(this->client_socket, message.c_str(), sizeof(message), 0);
     }
 
-    int Server_TCP::receive_message(char* message) {
+    int Server_TCP::send_packet(packet message) {
+        struct serialized_packet serialized = packet_serializer(message);
+        return send(this->client_socket, serialized.data, serialized.length, 0);
+    }
+
+    int Server_TCP::receive_message(std::string& message) {
+        char RxBuffer[MAX_BUFFER_SIZE] = {};
+        memset(RxBuffer, 0, MAX_BUFFER_SIZE);
+
+        int num_bytes = recv(this->client_socket, RxBuffer, MAX_BUFFER_SIZE, 0);
+        message = RxBuffer;
+        return num_bytes;
+    }
+
+    int Server_TCP::receive_packet(packet& my_packet) {
         char RxBuffer[MAX_BUFFER_SIZE] = {};
         memset(RxBuffer, 0, MAX_BUFFER_SIZE);
         int num_bytes = recv(this->client_socket, RxBuffer, MAX_BUFFER_SIZE, 0);
-        message = RxBuffer;
+        my_packet = packet_deserializer(RxBuffer);
         return num_bytes;
     }
 
@@ -180,15 +195,104 @@ namespace sdds
         }
     }
 
-    int Client_TCP::send_message(char* message) {
-        return send(this->active_socket, message, sizeof(message), 0);
+    int Client_TCP::send_message(std::string message) {        
+        return send(this->active_socket, message.c_str(), sizeof(message), 0);
     }
 
-    int Client_TCP::receive_message(char* message) {
+    int Client_TCP::send_packet(packet message) {
+        struct serialized_packet serialized = packet_serializer(message);
+        return send(this->active_socket, serialized.data, serialized.length, 0);
+    }
+
+    int Client_TCP::receive_message(std::string& message) {
         char RxBuffer[MAX_BUFFER_SIZE] = {};
         memset(RxBuffer, 0, MAX_BUFFER_SIZE);
         int num_bytes = recv(this->active_socket, RxBuffer, MAX_BUFFER_SIZE, 0);
         message = RxBuffer;
         return num_bytes;
     }
+
+    int Client_TCP::receive_packet(packet& my_packet) {
+        char RxBuffer[MAX_BUFFER_SIZE] = {};
+        memset(RxBuffer, 0, MAX_BUFFER_SIZE);
+        int num_bytes = recv(this->active_socket, RxBuffer, MAX_BUFFER_SIZE, 0);
+        my_packet = packet_deserializer(RxBuffer);
+        return num_bytes;
+    }
+
+    unsigned char sum_bits(unsigned char bitregister) {
+        unsigned char sum_bits = 0;
+        for (int i = 0; i < 8; i++) {
+            sum_bits += bitregister & 0x01;
+            bitregister = bitregister >> 1;
+        }
+     
+        return sum_bits;
+    }
+    
+    void CRC(unsigned char input, unsigned char& state) {
+        unsigned char feedback;
+        feedback = ((state & 0x80) >> 7) ^ ((state & 0x20) >> 5) ^ input;
+        state = (state << 1) + feedback;
+    }
+
+
+    packet create_packet(const Email& email){
+		packet my_packet;
+
+		strcpy(my_packet.name, email.getUserName().c_str());
+        my_packet.size = 150; // magic number for debugging
+		my_packet.letters = new char[my_packet.size];
+
+		memset(my_packet.letters, 0, my_packet.size);
+		snprintf(my_packet.letters, my_packet.size, email.returnDetails().c_str());
+
+		return my_packet;
+	}
+
+    packet create_packet(std::string msg){
+		packet my_packet;
+
+		strcpy(my_packet.name, msg.c_str());
+        my_packet.size = sizeof(msg);
+		my_packet.letters = new char[my_packet.size];
+
+		memset(my_packet.letters, 0, my_packet.size);
+		snprintf(my_packet.letters, my_packet.size, msg.c_str());
+
+		return my_packet;
+	}
+	
+	struct serialized_packet packet_serializer(packet my_packet) {
+		//beware of Windows completing groups of four bytes
+		int letters_size = my_packet.size;
+		char* serialized_packet = new char[1 * sizeof(int) + letters_size];
+		char* auxptr = serialized_packet;
+
+		memcpy(auxptr, &my_packet.size, 1 * sizeof(int));
+
+		auxptr += 1 * sizeof(int);
+
+		memcpy(auxptr, my_packet.letters, letters_size);
+		struct serialized_packet output;
+
+		output.data = serialized_packet;
+
+		output.length = 1 * sizeof(int) + 1 * sizeof(int) + letters_size * sizeof(char);
+
+		return output;
+	}
+	packet packet_deserializer(char* serialized_packet) {
+		packet deserialized_packet;
+
+		char* auxptr = serialized_packet;
+
+		memcpy(&deserialized_packet.size, auxptr, 1 * sizeof(int));
+
+		auxptr += 1 * sizeof(int);
+		deserialized_packet.letters = new char[deserialized_packet.size];
+
+		memcpy(deserialized_packet.letters, auxptr, deserialized_packet.size * sizeof(char));
+		return deserialized_packet;
+	}
 }
